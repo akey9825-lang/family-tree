@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Виды семейного древа</title>
+<style>
+:root{color-scheme:light;font:16px/1.5 "Segoe UI",sans-serif;color:#233831;background:#f2f4eb}
+*{box-sizing:border-box}body{margin:0}main{max-width:900px;margin:auto;padding:clamp(20px,5vw,58px)}
+a{color:#245948}h1{font:700 clamp(29px,5vw,48px)/1.12 Georgia,serif;margin:24px 0 8px}
+.intro,#caption{color:#4d6259;margin:8px 0 20px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px}
+button{font:inherit;padding:9px 14px;border:1px solid #9eb4a6;border-radius:8px;background:#fffdf7;color:#234c3c;cursor:pointer}
+button[aria-pressed=true]{background:#245948;color:white;border-color:#245948}
+button:focus-visible,a:focus-visible{outline:3px solid #378c73;outline-offset:3px}
+figure{margin:0;border:1px solid #c7d5ca;background:#fffdf7;border-radius:16px;padding:14px;overflow:auto}
+svg{display:block;width:100%;min-width:470px;max-height:465px}text{font:600 15px "Segoe UI",sans-serif;fill:#213a31;text-anchor:middle;dominant-baseline:middle}
+.line{fill:none;stroke:#728e7f;stroke-width:2.5}.card{fill:#f6f7ee;stroke:#9ab3a5;stroke-width:1.5}.focus{fill:#cbe7d8;stroke:#39705b}
+.level{fill:#567367;font-weight:500;font-size:13px}.sector{stroke:#fffdf7;stroke-width:2}
+figcaption{padding:8px 10px 0}p#caption{margin-bottom:5px}
+</style>
+<main>
+  <a href="family.html">Открыть семейное древо</a>
+  <h1>Виды семейного древа</h1>
+  <p class="intro">Одна вымышленная семья в трех представлениях. Зеленым отмечена Анна, от которой начинается схема.</p>
+  <nav class="tabs" aria-label="Вид древа">
+    <button type="button" data-view="rows" aria-pressed="true">Поколения</button>
+    <button type="button" data-view="hourglass" aria-pressed="false">Песочные часы</button>
+    <button type="button" data-view="fan" aria-pressed="false">Веер предков</button>
+  </nav>
+  <figure>
+    <svg id="diagram" role="img" viewBox="0 0 690 390" aria-label="Пример семейной схемы"></svg>
+    <figcaption><p id="caption" aria-live="polite"></p></figcaption>
+  </figure>
+</main>
+<script>
+'use strict';
+const diagram = document.querySelector('#diagram');
+const buttons = [...document.querySelectorAll('[data-view]')];
+const captions = {
+  rows: 'Каждый ряд соответствует поколению. Здесь видны и прямые родственники, и боковая ветвь с братом Анны и его дочерью.',
+  hourglass: 'Предки выше Анны, ее потомки ниже. Подходит, когда хочется проследить связь между поколениями от одного человека.',
+  fan: 'В центре Анна. Первое кольцо показывает родителей, второе дедов и бабушек. Подходит, чтобы сравнить отцовскую и материнскую линии.'
+};
+const positions = {
+  rows: {
+    'Петр':[155,53],'Лидия':[275,53],'Илья':[415,53],'Вера':[535,53],
+    'Сергей':[215,142],'Ирина':[475,142],'Анна':[240,229],'Олег':[472,229],
+    'Мария':[170,326],'Павел':[310,326],'Дарья':[472,326]
+  },
+  hourglass: {
+    'Петр':[145,53],'Лидия':[270,53],'Илья':[420,53],'Вера':[545,53],
+    'Сергей':[226,142],'Ирина':[464,142],'Анна':[345,229],
+    'Мария':[245,326],'Павел':[445,326]
+  }
+};
+const links = [
+  ['Петр','Сергей'],['Лидия','Сергей'],['Илья','Ирина'],['Вера','Ирина'],
+  ['Сергей','Анна'],['Ирина','Анна'],['Сергей','Олег'],['Ирина','Олег'],
+  ['Анна','Мария'],['Анна','Павел'],['Олег','Дарья']
+];
+function add(tag, attrs, label='') {
+  const el = document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for (const [key,value] of Object.entries(attrs)) el.setAttribute(key,value);
+  if (label) el.textContent=label;
+  diagram.append(el);
+}
+function rows(view) {
+  const points=positions[view];
+  for (const [first,second] of links) {
+    if (!points[first] || !points[second]) continue;
+    const [x,y]=points[first], [u,v]=points[second], mid=(y+v)/2;
+    add('path',{d:`M${x} ${y+20} C${x} ${mid} ${u} ${mid} ${u} ${v-20}`,class:'line'});
+  }
+  if (view==='rows') ['Деды и бабушки','Родители','Свое поколение','Дети'].forEach((name,i)=>add('text',{x:64,y:[53,142,229,326][i],class:'level'},name));
+  for (const [name,[x,y]] of Object.entries(points)) {
+    add('rect',{x:x-51,y:y-20,width:102,height:40,rx:8,class:name==='Анна'?'card focus':'card'});
+    add('text',{x,y},name);
+  }
+}
+function fan() {
+  const x=345,y=328;
+  const point=(radius,angle)=>[x+radius*Math.cos(angle*Math.PI/180),y+radius*Math.sin(angle*Math.PI/180)];
+  const sector=(from,to,start,end,color,name)=>{
+    const a=point(to,start), b=point(to,end), c=point(from,end), d=point(from,start);
+    add('path',{d:`M${a.join(' ')} A${to} ${to} 0 0 1 ${b.join(' ')} L${c.join(' ')} A${from} ${from} 0 0 0 ${d.join(' ')} Z`,fill:color,class:'sector'});
+    const [tx,ty]=point((from+to)/2,(start+end)/2);
+    add('text',{x:tx,y:ty},name);
+  };
+  sector(54,133,180,270,'#cce3d6','Сергей');
+  sector(54,133,270,360,'#d9e5f1','Ирина');
+  ['Петр','Лидия','Илья','Вера'].forEach((name,i)=>sector(133,237,180+i*45,225+i*45,i<2?'#e0eee4':'#e7eff5',name));
+  add('circle',{cx:x,cy:y,r:53,class:'focus'});
+  add('text',{x,y},'Анна');
+}
+function show(view) {
+  diagram.replaceChildren();
+  if(view==='fan') fan(); else rows(view);
+  document.querySelector('#caption').textContent=captions[view];
+  for(const button of buttons) button.setAttribute('aria-pressed',String(button.dataset.view===view));
+}
+for(const button of buttons) button.addEventListener('click',()=>show(button.dataset.view));
+show('rows');
+</script>
+</html>
